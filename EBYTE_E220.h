@@ -129,7 +129,7 @@ enum PROGRAM_COMMAND_Type {
 #define UDR_57600  0b110		// 57600 baud
 #define UDR_115200 0b111		// 115200 baud
 
-// parity bit options (must be the same for transmitter and reveiver)
+// parity bit options (can be different for transmitter and reveiver)
 //REG0       ___x x___
 #define PB_8N1 0b00			// default
 #define PB_8O1 0b01
@@ -224,7 +224,7 @@ enum PROGRAM_COMMAND_Type {
 
 //REG3                ____ x___    Reserved
 
-// (transmitter and reveiver MUST be the same)  (**)
+// (transmitter and receiver MUST be the same)  (**)
 //REG3             ____ _xxx
 #define OPT_WAKEUP500  0b000			// (**) Effectively all changed from E32
 #define OPT_WAKEUP1000 0b001
@@ -250,9 +250,9 @@ public:
 	// ALL parameters must be sent even if only one option is changed--hence get all parameters initially
 	// so you know what the non changed parameters are know for resending back
 
-	typedef void (*callbackFunc) (uint32_t);					//create function pointer type
+	typedef void (*ebyteCallbackFunc) (uint32_t);					//create function pointer type
 
-	bool	init(callbackFunc func = nullptr);
+	bool	init(ebyteCallbackFunc func = nullptr);
 
 	// methods to set modules working parameters NOTHING WILL BE SAVED UNLESS SaveParameters() is called
 	void	SetMode(MODE_TYPE mode = MODE_NORMAL);
