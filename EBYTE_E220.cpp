@@ -36,7 +36,7 @@
   5.0a			11/14/2021  Bridges			 all digitalWrites set to DigiatWriteFast, pinMode Changed from INPUT to UNPUT_PULLUP,
 											 all digitalReads changed to digitalReadFast.
   1.0			12/11/2021  Bridges/Kasprzak New release for E220 module. Modified original code from Kris Kasprzak
-*/
+  1.0a			12/04/2023  Bridges			 Small update to stop compiler warnings. Has no effect on performance. Affects .cpp file.
 
 #include <EBYTE_E220.h>
 #include <Stream.h>
@@ -60,19 +60,19 @@ EBYTE::EBYTE(Stream *s, uint8_t PIN_M0, uint8_t PIN_M1, uint8_t PIN_AUX)
 	_AUX = PIN_AUX;
 }
 
-EBYTE::callbackFunc setBaud;
+EBYTE::ebyteCallbackFunc setEbyteBaud;
 uint8_t currentBaudRate = 0;
-bool	autoBaud		= false;
+bool	ebyteAutoBaud	= false;
 
 /*
 Initialize the unit--basically this reads the modules parameters and stores the parameters
 for potential future module programming
 */
-bool EBYTE::init(callbackFunc func = nullptr) {
+bool EBYTE::init(ebyteCallbackFunc func){  //} = nullptr) {
 
 	bool ok = true;
 	
-	autoBaud = false;
+	ebyteAutoBaud = false;
 
 	pinMode(_AUX, INPUT_PULLUP);		//(**) pinMode Changed from INPUT to UNPUT_PULLUP
 	pinMode(_M0, OUTPUT);
@@ -81,9 +81,9 @@ bool EBYTE::init(callbackFunc func = nullptr) {
 	if (func) {
 		_UARTDataRate	= UDR_9600;
 		currentBaudRate = _UARTDataRate;
-		autoBaud		= true;
-		setBaud			= func;
-		setBaud(9600);
+		ebyteAutoBaud		= true;
+		setEbyteBaud	= func;
+		setEbyteBaud(9600);
 	}
 
 	SetMode(MODE_NORMAL);
@@ -244,14 +244,14 @@ void EBYTE::SetMode(MODE_TYPE mode) {
 	if (mode == MODE_PROGRAM) {
 		digitalWriteFast(_M0, HIGH);
 		digitalWriteFast(_M1, HIGH);
-		if (autoBaud && (_UARTDataRate != UDR_9600)) {
-			setBaud(9600);
+		if (ebyteAutoBaud && (_UARTDataRate != UDR_9600)) {
+			setEbyteBaud(9600);
 			currentBaudRate = UDR_9600;
 		}
 	}
 	else {
-		if (autoBaud && (currentBaudRate != _UARTDataRate)) {
-			setBaud( baudRates[ _UARTDataRate ] );
+		if (ebyteAutoBaud && (currentBaudRate != _UARTDataRate)) {
+			setEbyteBaud( baudRates[ _UARTDataRate ] );
 			currentBaudRate = _UARTDataRate;
 		}
 	}

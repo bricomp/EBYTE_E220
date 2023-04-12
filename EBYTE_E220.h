@@ -37,7 +37,8 @@
   5.0a			11/14/2021  Bridges			 all digitalWrites set to DigiatWriteFast, pinMode Changed from INPUT to UNPUT_PULLUP,
 											 all digitalReads changed to digitalReadFast.
   1.0			12/07/2021  Bridges/Kasprzak New release for E220 module. Modified original code from Kris Kasprzak
-  
+  1.0a			12/04/2023  Bridges			 Small update to stop compiler warnings. Has no effect on performance. Affects .cpp file.
+
   *******************************************************************
   **                                                               **
   ** NOTE CHANGES FROM E32 ARE GENERALY IDENTIFIED BY (**) COMMENT **
