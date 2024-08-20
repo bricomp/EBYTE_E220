@@ -5,7 +5,7 @@ The EBYTE_E220 code is based upon the EBYTE code from Kris Kasprzak and modified
 
 
 
-Updated 20 Aug 2024 - Added option to debug SendStruct output an added a Funtion to SetDefaultParameters,
+Updated 20 Aug 2024 - Added option to debug SendStruct output and added a Funtion to SetDefaultParameters,
 
 Updated 12/4/2020, added internal buffer clearing to avoid programming and read corruption
 
