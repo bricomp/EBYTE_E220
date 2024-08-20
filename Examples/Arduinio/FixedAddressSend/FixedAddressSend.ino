@@ -21,11 +21,20 @@
 #include <SoftwareSerial.h>
 #include "EBYTE_E220.h"
 
+
 #define PIN_RX 2
 #define PIN_TX 3
 #define PIN_M0 4
 #define PIN_M1 5
 #define PIN_AX 6
+
+#define myAddrL		2
+#define myAddrH		0
+#define myChan		15
+
+#define targetAddrL 20
+#define targetAddrH 10
+#define targetChan  15
 
 // i recommend putting this code in a .h file and including it
 // from both the receiver and sender modules
@@ -39,12 +48,11 @@ struct DATA {
 
 };
 
-int Chan;
-DATA MyData;
-
-// you will need to define the pins to create the serial port
+// connect to any digital pin to connect to the serial port
+// don't use pin 01 and 1 as they are reserved for USB communications
 SoftwareSerial ESerial(PIN_RX, PIN_TX);
 
+DATA MyData;
 
 // create the transceiver object, passing in the serial and pins
 EBYTE_E220 Transceiver(&ESerial, PIN_M0, PIN_M1, PIN_AX);
@@ -53,21 +61,23 @@ void setup() {
 
   Serial.begin(9600);
 
+	while (!Serial) {}
+
   // start the transceiver serial port--i have yet to get a different
   // baud rate to work--data sheet says to keep on 9600
-  ESerial.begin(9600);
+	ESerial.begin(9600);
 
-  Serial.println("Starting Sender");
+	Serial.println("Starting Sender");
 
   // this init will set the pinModes for you
-  Transceiver.init();
+	Transceiver.init();
 
   // The following call is optional but can be very useful when two Modules will not talk to themselves.
   // It is quite possible that one Module has had a parameter set which is different from the other.
   // Under these circumstances the Modules will NOT talk to each other and it is not at first sight obvious why.
   // Using the Function below has saved me many an hour chasing a program error which was not there. I talk from Experience.
 
-  Transceiver.SetDefaultParameters();
+	Transceiver.SetDefaultParameters();
 
   // all these calls are optional but shown to give examples of what you can do
 
@@ -93,22 +103,26 @@ void setup() {
 
   //   Transceiver.SetCrypt(0);
 
-  Transceiver.SetAddressH(4);
-  Transceiver.SetAddressL(0);
-  Chan = 15;
-  Transceiver.SetChannel(Chan);
+  //  Transceiver.SetAddressH(4);
+  //  Transceiver.SetAddressL(0);
   //  save the parameters to the unit,
- //   Transceiver.SaveParameters(PERMANENT);
+  //   Transceiver.SaveParameters(PERMANENT);
 
-   // you can print all parameters and is good for debugging
-   // if your units will not communicate, print the parameters
-   // for both sender and receiver and make sure air rates, channel
-   // and address is the same
-  Transceiver.PrintParameters();
+  // you can print all parameters and is good for debugging
+  // if your units will not communicate, print the parameters
+  // for both sender and receiver and make sure air rates, channel
+  // and address is the same
+  //  Transceiver.PrintParameters();
 
   //   Transceiver.GetRSSIValues();
   //   Serial.print("RSSI                  : "); Serial.println(Transceiver.RSSIdata);
   //   Serial.print("RSSI on Last Receive  : "); Serial.println(Transceiver.RSSIlastReceive);
+	Transceiver.SetAddressH( myAddrH );
+	Transceiver.SetAddressL( myAddrL );
+	Transceiver.SetChannel(  myChan  );
+
+	Transceiver.SetTransmissionMode(FixedModeENABLE);
+	Transceiver.PrintParameters();
 }
 
 void loop() {
@@ -121,11 +135,12 @@ void loop() {
   // i highly suggest you send data using structures and not
   // a parsed data--i've always had a hard time getting reliable data using
   // a parsing method
+  Transceiver.SendByte(targetAddrH);  Transceiver.SendByte(targetAddrL);  Transceiver.SendByte(targetChan);
   Transceiver.SendStruct(&MyData, sizeof(MyData));
 
   // let the use know something was sent
   Serial.print("Sending: "); Serial.println(MyData.Count);
-  delay(1000);
 
+  delay(1000);
 
 }

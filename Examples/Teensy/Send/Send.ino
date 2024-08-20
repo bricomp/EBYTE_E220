@@ -18,7 +18,7 @@
 
 */
 
-#include "EBYTE_220.h"
+#include "EBYTE_E220.h"
 
 // connect to any of the Teensy Serial ports
 #define ESerial Serial1
@@ -43,7 +43,7 @@ int Chan;
 DATA MyData;
 
 // create the transceiver object, passing in the serial and pins
-EBYTE Transceiver(&ESerial, PIN_M0, PIN_M1, PIN_AX);
+EBYTE_E220 Transceiver(&ESerial, PIN_M0, PIN_M1, PIN_AX);
 
 void setup() {
 
@@ -55,30 +55,56 @@ void setup() {
   // baud rate to work--data sheet says to keep on 9600
   ESerial.begin(9600);
 
-  Serial.println("Starting Sender");
-
   // this init will set the pinModes for you
   Transceiver.init();
 
+  // The following call is optional but can be very useful when two Modules will not talk to themselves.
+  // It is quite possible that one Module has had a parameter set which is different from the other.
+  // Under these circumstances the Modules will NOT talk to each other and it is not at first sight obvious why.
+  // Using the Function below has saved me many an hour chasing a program error which was not there. I talk from Experience.
+
+  Transceiver.SetDefaultParameters();
 
   // all these calls are optional but shown to give examples of what you can do
 
-  // Serial.println(Transceiver.GetAirDataRate());
-  // Serial.println(Transceiver.GetChannel());
+  //   Transceiver.SetMode();
+  //   void	SetAddress(uint16_t val = 0);
+  //   Transceiver.SetAddressH(0);
+  //   Transceiver.SetAddressL(0);
+	 //REG0
+  //   Transceiver.SetUARTBaudRate(UDR_9600);
+  //   Transceiver.SetParityBit(PB_8N1);
+  //   Transceiver.SetAirDataRate(ADR_2400);
+	 //REG1
+  //   Transceiver.SetSubPacketSize(PKT_200bytes);
+  //   Transceiver.SetRSSIAmbientNoiseEnable(RSSI_Disable);
+  //   Transceiver.SetTransmitPower(PWR_TP22);
+	 //RETransceiver.G2
+  //   Transceiver.SetChannel(15);
+	 //REG3
+  //   Transceiver.SetEnableRSSIByte(RSSIDisable);
+  //   Transceiver.SetTransmissionMode(FixedModeDISABLE);
+  //   Transceiver.SetEnableLBT(LBTDisable);
+  //   Transceiver.SetWORTIming(OPT_WAKEUP500);
 
-  // Transceiver.SetAddressH(4);
-  // Transceiver.SetAddressL(0);
-  // Chan = 15;
-  // Transceiver.SetChannel(Chan);
-  // save the parameters to the unit,
-  // Transceiver.SaveParameters(PERMANENT);
+  //   Transceiver.SetCrypt(0);
 
-  // you can print all parameters and is good for debugging
-  // if your units will not communicate, print the parameters
-  // for both sender and receiver and make sure air rates, channel
-  // and address is the same
-  // Transceiver.PrintParameters();
+  Transceiver.SetAddressH(4);
+  Transceiver.SetAddressL(0);
+  Chan = 15;
+  Transceiver.SetChannel(Chan);
+  //  save the parameters to the unit,
+ //   Transceiver.SaveParameters(PERMANENT);
 
+   // you can print all parameters and is good for debugging
+   // if your units will not communicate, print the parameters
+   // for both sender and receiver and make sure air rates, channel
+   // and address is the same
+  Transceiver.PrintParameters();
+
+  //   Transceiver.GetRSSIValues();
+  //   Serial.print("RSSI                  : "); Serial.println(Transceiver.RSSIdata);
+  //   Serial.print("RSSI on Last Receive  : "); Serial.println(Transceiver.RSSIlastReceive);
 }
 
 void loop() {

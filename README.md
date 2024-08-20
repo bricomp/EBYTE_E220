@@ -2,11 +2,14 @@ This file is copied from https://github.com/KrisKasprzak/EBYTE.
 
 The EBYTE_E220 code is based upon the EBYTE code from Kris Kasprzak and modified for use with the E220 modules with some additions.
 # EBYTE
- 
- 
-<b><h2><center>Updated 12/4/2020, added internal buffer clearing to avoid programming and read corruption</center></h1></b>
-<br>
-<b><h2><center>EBYTE Transceivers</center></h1></b>
+
+
+
+Updated 20 Aug 2024 - Added option to debug SendStruct output an added a Funtion to SetDefaultParameters,
+
+Updated 12/4/2020, added internal buffer clearing to avoid programming and read corruption
+
+EBYTE Transceivers
 
 This library is intended to be used with UART type EBYTE transceivers (E44-TTL-100 for example), small wireless units for MCU's such as
 Teensy and Arduino. This library lets users program the operating parameters and both send and receive data.
@@ -27,7 +30,7 @@ E32-915T20D, E32-915T20S, E32-915T30D, E32-915T30S, E32-170T30D, E32-400T20S
 Note: check the EBYTE website to make sure the selected module supports UART communications, some modules are SPI only.
 
 Here is a YouTube video on library usage: https://youtu.be/hMjArKGucFA
-  
+
 <b><h3> Module connection </b></h3>
 Module	MCU						Description
 1. MO		Any digital pin*		pin to control working/program modes 
@@ -42,8 +45,8 @@ notes
 
 1. caution in connecting to Arduino pin 0 and 1 as those pins are for USB connection to PC so you can't have the EBYTE connected during programming. I recommend NOT using Arduino pins 0 and 1
 2. The signal lines for these units are 3V3 but are 5 volt tolerant, however 5 volts may result in communication failures. If using a 5 volt MCU such as arduino, you may need to do the following. 
-  a) You may need a 4K7-10K pullup to Rx and AUX pins (possibly Tx) if using and Arduino
-  b) If using an Arduino you may need a series 4K7 resistor between MCU Tx and the transceiver Rx.
+    a) You may need a 4K7-10K pullup to Rx and AUX pins (possibly Tx) if using and Arduino
+    b) If using an Arduino you may need a series 4K7 resistor between MCU Tx and the transceiver Rx.
 4. In some of my applications, I did not have enough digital pins to connect the Aux pin. No worries (just pass -1 in the argument list in the object create code). Then you will need to provide an appropriate delay() to let the transmission complete--experiment with the amount.
 5. Serial pins for connection is dependent on the MCU, Teensy 3.2 for example: Serial1 are Rx=0, Rx=0, Serial2 Rx=9, Tx=10, Serial3 Rx=7, Tx=8. Arduino can be most serial pins using SoftwareSerial(MCU_Rx_pin, MCU_Tx_pin), except pins 0 and 1 as those are for USB usage
 
@@ -54,7 +57,7 @@ http://www.ebyte.com/en/product-view-news.aspx?id=174
 
 <b><h3>General code usage</b></h3> 
 1. Create a serial object
-2. Create EBYTE object that uses the serial object
+2. Create EBYTE_E220 object that uses the serial object
 3. begin the serial object
 4. init() the EBYTE object
 5. set parameters (optional but required if sender and receiver are different)
@@ -70,7 +73,7 @@ For best range:
 <li> Consider high gain antennas (can be purchased from the manufacturer) see their web site for details</li>
 <li> The data sheet says for max range, power the units with 5.0 volts (keep 3V3 on the signal lines). I personaly found little range differene with higher supply voltage</li>
  <li> The data sheet says for max range, set the air data rate to 2.4 bps. I personaly found little range differene with low data rates, and low data rates may limit how often you can send data. </li>
- 
+
 </ul>
 
 <b><h3>Data transmission packets</b></h3>

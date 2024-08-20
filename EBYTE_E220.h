@@ -38,6 +38,12 @@
 											 all digitalReads changed to digitalReadFast.
   1.0			12/07/2021  Bridges/Kasprzak New release for E220 module. Modified original code from Kris Kasprzak
   1.0a			12/04/2023  Bridges			 Small update to stop compiler warnings. Has no effect on performance. Affects .cpp file.
+  1.10			20/08/2024  Bridges			 Added TurnOnSendStructDebug tu turn on debugging for SendStruct - usefull to see what is actually
+											 going to be sent.
+											 Added SetDefaultParameters to easily set all the parameters for send/receive modules to the same state.
+											 This can save days of debugging of coded only to find a simple mismatch of a single parameter between modules
+											 is stopping sending/reveiving.
+											 digitalReadFast and digitalWriteFast used on Teensy boards.
 
   *******************************************************************
   **                                                               **
@@ -238,11 +244,11 @@ enum PROGRAM_COMMAND_Type {
 
 class Stream;
 
-class EBYTE {
+class EBYTE_E220 {
 
 public:
 
-	EBYTE(Stream *s, uint8_t PIN_M0 = 4, uint8_t PIN_M1 = 5, uint8_t PIN_AUX = 6);
+	EBYTE_E220(Stream *s, uint8_t PIN_M0 = 4, uint8_t PIN_M1 = 5, uint8_t PIN_AUX = 6);
 
 	// code to initialize the library
 	// this method reads all parameters from the module and stores them in memory
@@ -277,6 +283,8 @@ public:
 	void	SetWORTIming(uint8_t val);
 
 	void	SetCrypt(uint16_t val);
+
+	void	SetDefaultParameters();
 
 	bool	GetAux();
 
@@ -323,6 +331,10 @@ public:
 	void	SendByte(uint8_t TheByte);
 	bool	SendStruct(const void *TheStructure, uint16_t size_);
 	
+	// Method to turn on SendStruct debugging - if turned on the number of bytes being sent is printed out between "[]" followed
+	// by all the bytes to be sent in HEX format seperated by a space.
+	void	TurnOnSendStructDebug(bool turnOn);
+
 	// mehod to print parameters
 	void	PrintParameters();
 	
@@ -427,5 +439,6 @@ private:
 	uint16_t	_Address;
 	uint8_t		_buf;
 
+	bool		_debugStructSend	= false;
 };
 

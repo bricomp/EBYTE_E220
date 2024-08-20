@@ -33,26 +33,42 @@
   3.0			3/27/2020	Kasprzak		 Added more Get functions
   4.0			6/23/2020	Kasprzak		 Added private method to clear the buffer to ensure read methods would not be filled with buffered data
   5.0			12/4/2020	Kasprzak		 moved Reset to public, added Clear to SetMode to avoid buffer corruption during programming
-  5.0a			11/14/2021  Bridges			 all digitalWrites set to DigiatWriteFast, pinMode Changed from INPUT to UNPUT_PULLUP,
+  5.0a			11/14/2021  Bridges			 all digitalWriteFasts set to DigiatWriteFast, pinMode Changed from INPUT to UNPUT_PULLUP,
 											 all digitalReads changed to digitalReadFast.
   1.0			12/11/2021  Bridges/Kasprzak New release for E220 module. Modified original code from Kris Kasprzak
   1.0a			12/04/2023  Bridges			 Small update to stop compiler warnings. Has no effect on performance. Affects .cpp file.
+  1.10			20/08/2024  Bridges			 Added TurnOnSendStructDebug tu turn on debugging for SendStruct - usefull to see what is actually
+											 going to be sent.
+											 Added SetDefaultParameters to easily set all the parameters for send/receive modules to the same state.
+											 This can save days of debugging of coded only to find a simple mismatch of a single parameter between modules
+											 is stopping sending/reveiving.
+											 digitalReadFast and digitalWriteFast used on Teensy boards.
 
+ */
 #include <EBYTE_E220.h>
 #include <Stream.h>
-
-#if ARDUINO >= 100
-#include "Arduino.h"
+#if defined(ARDUINO_TEENSY41) || defined(ARDUINO_TEENSY_MICROMOD) || defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY40) || defined(ARDUINO_TEENSY36) || defined(ARDUINO_TEENSY35) || defined(ARDUINO_TEENSY32) || defined(ARDUINO_TEENSY31)
+#define isTeensy
 #else
-#include "WProgram.h"
+#include <elapsedMillis.h>
+#define digitalReadFast digitalRead
+#define digitalWriteFast digitalWrite
+#define SerialUSB Serial
 #endif
 
-uint32_t baudRates[]{ 1200, 2400, 4800, 9600, 19200, 34800, 57600, 115200 };
+#if ARDUINO >= 100                                                                                                                                                                                                         
+#include "Arduino.h"
+#else
+#include "WProgram.h"                                                    
+#endif
 
-/*
+uint32_t baudRates[]{ 1200, 2400, 4800, 9600, 19200, 34800, 57600, 115200 };                                                                                                                                                                           
+
+/*                                                                                                                                                                                                                                                                                                                                         
 create the transciever object
 */
-EBYTE::EBYTE(Stream *s, uint8_t PIN_M0, uint8_t PIN_M1, uint8_t PIN_AUX)
+
+EBYTE_E220::EBYTE_E220(Stream *s, uint8_t PIN_M0, uint8_t PIN_M1, uint8_t PIN_AUX)
 {
 	_s = s;
 	_M0 = PIN_M0;
@@ -60,7 +76,7 @@ EBYTE::EBYTE(Stream *s, uint8_t PIN_M0, uint8_t PIN_M1, uint8_t PIN_AUX)
 	_AUX = PIN_AUX;
 }
 
-EBYTE::ebyteCallbackFunc setEbyteBaud;
+EBYTE_E220::ebyteCallbackFunc setEbyteBaud;
 uint8_t currentBaudRate = 0;
 bool	ebyteAutoBaud	= false;
 
@@ -68,7 +84,7 @@ bool	ebyteAutoBaud	= false;
 Initialize the unit--basically this reads the modules parameters and stores the parameters
 for potential future module programming
 */
-bool EBYTE::init(ebyteCallbackFunc func){  //} = nullptr) {
+bool EBYTE_E220::init(ebyteCallbackFunc func){  //} = nullptr) {
 
 	bool ok = true;
 	
@@ -108,14 +124,14 @@ bool EBYTE::init(ebyteCallbackFunc func){  //} = nullptr) {
 /*
 Method to indicate availability
 */
-bool EBYTE::available() {
+bool EBYTE_E220::available() {
 	return _s->available();
 }
 
 /*
 Method to flush serial stream
 */
-void EBYTE::flush() {
+void EBYTE_E220::flush() {
 	_s->flush();
 }
 
@@ -123,7 +139,7 @@ void EBYTE::flush() {
 Method to write a single byte...not sure how useful this really is. If you need to send 
 more that one byte, put the data into a data structure and send it in a big chunk
 */
-void EBYTE::SendByte( uint8_t TheByte) {
+void EBYTE_E220::SendByte( uint8_t TheByte) {
 	_s->write(TheByte);
 }
 
@@ -132,14 +148,14 @@ Method to get a single byte...not sure how useful this really is. If you need to
 more that one byte, put the data into a data structure and send/receive it in a big chunk
 */
 
-uint8_t EBYTE::GetByte() {
+uint8_t EBYTE_E220::GetByte() {
 	return _s->read();
 }
 
 /*
 Method to calculate noise lever in dBm from supplied RSSI data
 */
-int16_t EBYTE::CalculateChannelNoiseIn_dBm(uint8_t RSSIdta) {
+int16_t EBYTE_E220::CalculateChannelNoiseIn_dBm(uint8_t RSSIdta) {
 	return -(256 - (int16_t) RSSIdta);
 };
 
@@ -150,8 +166,11 @@ TTP: put your structure definition into a .h file and include in both the sender
 sketches
 NOTE: of your sender and receiver MCU's are different (Teensy and Arduino) caution on the data
 types each handle ints floats differently
+
+If _debugStructSend is turn on (SendStruct debugging) the number of bytes being sent is printed out between "[]" followed
+by all the bytes to be sent in HEX format seperated by a space.
 */
-bool EBYTE::SendStruct(const void *TheStructure, uint16_t size_) {
+bool EBYTE_E220::SendStruct(const void *TheStructure, uint16_t size_) {
 
 		_buf = _s->write((uint8_t *) TheStructure, size_);
 		
@@ -159,8 +178,21 @@ bool EBYTE::SendStruct(const void *TheStructure, uint16_t size_) {
 		
 		return (_buf == size_);
 
+		if (_debugStructSend) {
+			uint16_t i = size_;
+			const uint8_t* p = (const uint8_t*)TheStructure;
+			Serial.print("["); Serial.print(size_); Serial.print("] ");
+			while (i-- > 0) {
+				Serial.print(*p++, HEX);
+				Serial.print(" ");
+			}
+		}
+
 }
 
+void EBYTE_E220::TurnOnSendStructDebug(bool turnOn) {
+	_debugStructSend = turnOn;
+}
 /*
 Method to get a chunk of data provided data is in a struct--my personal favorite as you 
 need not parse or worry about sprintf() inability to handle floats
@@ -169,7 +201,7 @@ sketches
 NOTE: of your sender and receiver MCU's are different (Teensy and Arduino) caution on the data
 types each handle ints floats differently
 */
-bool EBYTE::GetStruct(const void *TheStructure, uint16_t size_) {
+bool EBYTE_E220::GetStruct(const void *TheStructure, uint16_t size_) {
 	
 	_buf = _s->readBytes((uint8_t*)TheStructure, size_);
 
@@ -196,7 +228,7 @@ Utility method to wait until module is done tranmitting
 a timeout is provided to avoid an infinite loop
 */
 
-void EBYTE::CompleteTask(unsigned long timeout) {
+void EBYTE_E220::CompleteTask(unsigned long timeout) {
 
 	elapsedMillis t = 0;			// (**)
 	
@@ -205,7 +237,6 @@ void EBYTE::CompleteTask(unsigned long timeout) {
 	if (_AUX != -1) {
 		
 		while (digitalReadFast(_AUX) == LOW) {    // (**) changed from digitalRead to digitalReadFast
-
 			if (t > timeout){
 				break;
 			}
@@ -222,7 +253,7 @@ void EBYTE::CompleteTask(unsigned long timeout) {
 /*
 method to set the mode (program, normal, etc.)
 */
-void EBYTE::SetMode(MODE_TYPE mode) {
+void EBYTE_E220::SetMode(MODE_TYPE mode) {
 	
 	// data sheet claims module needs some extra time after mode setting (2ms)
 	// most of my projects uses 10 ms, but 40ms is safer
@@ -230,7 +261,7 @@ void EBYTE::SetMode(MODE_TYPE mode) {
 	delay(PIN_RECOVER);
 	
 	if (mode == MODE_NORMAL) {
-		digitalWriteFast(_M0, LOW);   // (**) all digitalWrites set to DigiatWriteFast
+		digitalWriteFast(_M0, LOW);   // (**) all digitalWrite set to DigiatWriteFast
 		digitalWriteFast(_M1, LOW);
 	}
 	else if (mode == MODE_WORtransmit) {    //(**) Names Changed
@@ -251,7 +282,7 @@ void EBYTE::SetMode(MODE_TYPE mode) {
 	}
 	else {
 		if (ebyteAutoBaud && (currentBaudRate != _UARTDataRate)) {
-			setEbyteBaud( baudRates[ _UARTDataRate ] );
+			setEbyteBaud(baudRates[_UARTDataRate]);
 			currentBaudRate = _UARTDataRate;
 		}
 	}
@@ -278,44 +309,44 @@ void EBYTE::SetMode(MODE_TYPE mode) {
 /*
 method to Set/Get the high bit of the address
 */
-void EBYTE::SetAddressH(uint8_t val) {
+void EBYTE_E220::SetAddressH(uint8_t val) {
 	_AddressHigh = val;
 }
 
-uint8_t EBYTE::GetAddressH() {
+uint8_t EBYTE_E220::GetAddressH() {
 	return _AddressHigh;
 }
 
 /*
 method to Set/Get the lo bit of the address
 */
-void EBYTE::SetAddressL(uint8_t val) {
+void EBYTE_E220::SetAddressL(uint8_t val) {
 	_AddressLow = val;
 }
 
-uint8_t EBYTE::GetAddressL() {
+uint8_t EBYTE_E220::GetAddressL() {
 	return _AddressLow;
 }
 
 /*
 method to Set/Get the channel
 */
-void EBYTE::SetChannel(uint8_t val) {
+void EBYTE_E220::SetChannel(uint8_t val) {
 	_Channel = val;
 }
-uint8_t EBYTE::GetChannel() {
+uint8_t EBYTE_E220::GetChannel() {
 	return _Channel;
 }
 
 /*
 method to Set/Get the air data rate
 */
-void EBYTE::SetAirDataRate(uint8_t val) {
+void EBYTE_E220::SetAirDataRate(uint8_t val) {
 	_AirDataRate = val;
 	BuildREG0byte();
 }
 
-uint8_t EBYTE::GetAirDataRate() {
+uint8_t EBYTE_E220::GetAirDataRate() {
 	return _AirDataRate;
 }
 
@@ -323,99 +354,99 @@ uint8_t EBYTE::GetAirDataRate() {
 /*
 method to Set/Get the sub packet size
 */
-void EBYTE::SetSubPacketSize(uint8_t val) {
+void EBYTE_E220::SetSubPacketSize(uint8_t val) {
 	_SubPacketSize = val;
 	BuildREG1byte();
 };
 
-uint8_t EBYTE::GetSubPacketSize() {
+uint8_t EBYTE_E220::GetSubPacketSize() {
 	return _SubPacketSize;
 };
 
 /*
 method to Set/Get the RSSI Ambient Noise Enable
 */
-void EBYTE::SetRSSIAmbientNoiseEnable(bool val) {
+void EBYTE_E220::SetRSSIAmbientNoiseEnable(bool val) {
 	_RSSIAmbNoiseEnable = val;
 	BuildREG1byte();
 };
 
-bool EBYTE::GetRSSIAmbientNoiseEnable() {
+bool EBYTE_E220::GetRSSIAmbientNoiseEnable() {
 	return _RSSIAmbNoiseEnable;
 };
 
 /*
 method to Set/Get the Enable RSSI byte
 */
-void EBYTE::SetEnableRSSIByte(bool val) {
+void EBYTE_E220::SetEnableRSSIByte(bool val) {
 	_EnableRSSIByte = val;
 	BuildREG3byte();
 };
-bool EBYTE::GetEnableRSSIByte() {
+bool EBYTE_E220::GetEnableRSSIByte() {
 	return _EnableRSSIByte;
 };
 
 /*
 method to Set/Get the Enable LBT
 */
-void EBYTE::SetEnableLBT(bool val) {
+void EBYTE_E220::SetEnableLBT(bool val) {
 	_EnableLBT = val;
 	BuildREG3byte();
 };
-bool EBYTE::GetEnableLBT() {
+bool EBYTE_E220::GetEnableLBT() {
 	return _EnableLBT;
 };
 
 /*
 method to Set/Get the parity bit
 */
-void EBYTE::SetParityBit(uint8_t val) {
+void EBYTE_E220::SetParityBit(uint8_t val) {
 	_ParityBit = val;
 	BuildREG0byte();
 }
 
-uint8_t EBYTE::GetParityBit( ) {
+uint8_t EBYTE_E220::GetParityBit( ) {
 	return _ParityBit;
 }
 
 /*
 method to Set/Get Transmission Mode
 */
-void EBYTE::SetTransmissionMode(uint8_t val) {
+void EBYTE_E220::SetTransmissionMode(uint8_t val) {
 	_TransmitMode = val;
 	BuildREG3byte();
 }
-uint8_t EBYTE::GetTransmissionMode( ) {
+uint8_t EBYTE_E220::GetTransmissionMode( ) {
 	return _TransmitMode;
 }
 
 /*
 method to Set/Get WOR Timing
 */
-void EBYTE::SetWORTIming(uint8_t val) {
+void EBYTE_E220::SetWORTIming(uint8_t val) {
 	_WORTiming = val;
 	BuildREG3byte();
 }
-uint8_t EBYTE::GetWORTIming() {
+uint8_t EBYTE_E220::GetWORTIming() {
 	return _WORTiming;
 }
 
 /*
 method to Set/Get Transmit Power
 */
-void EBYTE::SetTransmitPower(uint8_t val) {
+void EBYTE_E220::SetTransmitPower(uint8_t val) {
 	_TransmitPower = val;
 	BuildREG1byte();
 }
 
-uint8_t EBYTE::GetTransmitPower() {
+uint8_t EBYTE_E220::GetTransmitPower() {
 	return _TransmitPower;
 }
 
 /*
 method to compute the address based on high and low bits
 */
-void EBYTE::SetAddress(uint16_t Val) {
+void EBYTE_E220::SetAddress(uint16_t Val) {
 	_AddressHigh = ((Val & 0xFFFF) >> 8);
 	_AddressLow = (Val & 0xFF);
 }
@@ -423,24 +454,24 @@ void EBYTE::SetAddress(uint16_t Val) {
 /*
 method to get the address which is a collection of hi and lo bytes
 */
-uint16_t EBYTE::GetAddress() {
+uint16_t EBYTE_E220::GetAddress() {
 	return (_AddressHigh << 8) | (_AddressLow);
 }
 
 /*
 Set/Get the UART baud rate
 */
-void EBYTE::SetUARTBaudRate(uint8_t val) {
+void EBYTE_E220::SetUARTBaudRate(uint8_t val) {
 	_UARTDataRate = val;
 	BuildREG0byte();
 }
 
-uint8_t EBYTE::GetUARTBaudRate() {
+uint8_t EBYTE_E220::GetUARTBaudRate() {
 	return _UARTDataRate;
 }
 
 // (**) The following functions are new since E32
-bool EBYTE::GetRSSIValues() {               // (**)
+bool EBYTE_E220::GetRSSIValues() {               // (**)
 
 	uint8_t transaction[6]	= { 0xC0, 0xC1, 0xC2, 0xC3, 0x00, 0x02 };
 	bool	ok				= false;
@@ -465,29 +496,29 @@ bool EBYTE::GetRSSIValues() {               // (**)
 /*
 method to build the byte for programming (notice it's a collection of a few variables)
 */
-void EBYTE::BuildREG0byte() {
+void EBYTE_E220::BuildREG0byte() {
 	_REG0 = 0;
 	_REG0 = (((_UARTDataRate & 0b111) << 5) | ((_ParityBit & 0b11) << 3) | (_AirDataRate & 0b111));
 }
 
-void EBYTE::BuildREG1byte() {
+void EBYTE_E220::BuildREG1byte() {
 	_REG1 = 0;
 	_REG1 = (((_SubPacketSize & 0b11) << 6) | ((_RSSIAmbNoiseEnable & 0b1) << 5) | (_TransmitPower & 0b11));
 }
 
-void EBYTE::BuildREG3byte() {
+void EBYTE_E220::BuildREG3byte() {
 	_REG3 = 0;
 	_REG3 = (((_EnableRSSIByte & 0b1) << 7) | ((_TransmitMode & 0b1) << 6) | ((_EnableLBT & 0b1) << 4) | (_WORTiming & 0b111));
 }
 
-bool EBYTE::GetAux() {
+bool EBYTE_E220::GetAux() {
 	return digitalReadFast(_AUX);    // (**) changed from digitalRead to digitalReadFast
 }
 
 /*
 method to save parameters to the module
 */
-void EBYTE::SaveParameters(PROGRAM_COMMAND_Type val) {
+void EBYTE_E220::SaveParameters(PROGRAM_COMMAND_Type val) {
 
 	config.COMMAND			= val;
 	config.STARTING_ADDRESS = 0;
@@ -526,7 +557,7 @@ void EBYTE::SaveParameters(PROGRAM_COMMAND_Type val) {
 /*
 method to save Crypt to the module
 */
-void EBYTE::SetCrypt(uint16_t val) {
+void EBYTE_E220::SetCrypt(uint16_t val) {
 
 	uint8_t reply[6];
 
@@ -555,12 +586,40 @@ void EBYTE::SetCrypt(uint16_t val) {
 	SetMode(MODE_NORMAL);
 }
 
+void EBYTE_E220::SetDefaultParameters() {
+
+	SetMode();
+	//   void	SetAddress(uint16_t val = 0);
+	SetAddressH(0);
+	SetAddressL(0);
+	//REG0
+	SetUARTBaudRate(UDR_9600);
+	SetParityBit(PB_8N1);
+	SetAirDataRate(ADR_2400);
+	//REG1
+	SetSubPacketSize(PKT_200bytes);
+	SetRSSIAmbientNoiseEnable(RSSI_Disable);
+	SetTransmitPower(PWR_TP22);
+	//RETransceiver.G2
+	SetChannel(15);
+	//REG3
+	SetEnableRSSIByte(RSSIDisable);
+	SetTransmissionMode(FixedModeDISABLE);
+	SetEnableLBT(LBTDisable);
+	SetWORTIming(OPT_WAKEUP500);
+
+	SetCrypt(0);
+	SaveParameters(PERMANENT);
+
+};
+
+
 /*
 method to print parameters, this can be called anytime after init(), because init gets parameters
 and any method updates the variables
 */
 
-void EBYTE::PrintParameters() {
+void EBYTE_E220::PrintParameters() {
 
 	_UARTDataRate			= (_REG0 & 0b11100000) >> 5;
 	_ParityBit				= (_REG0 & 0b00011000) >> 3;
@@ -605,7 +664,7 @@ void EBYTE::PrintParameters() {
 /*
 method to read parameters, 
 */
-bool EBYTE::ReadParameters() {
+bool EBYTE_E220::ReadParameters() {
 
 	config.COMMAND			= READ_CONFIGURATION;
 	config.STARTING_ADDRESS = 0;
@@ -668,7 +727,7 @@ hence, let's clean it out
 this is called as part of the setmode
 
 */
-void EBYTE::ClearBuffer(){
+void EBYTE_E220::ClearBuffer(){
 
 	unsigned long amt = millis();
 
